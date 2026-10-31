@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI Job Application Tailoring Assistant — Version 2.2</title>
+<style>
+  :root {
+    --navy:#17324d; --blue:#2563eb; --ink:#243447; --muted:#64748b;
+    --line:#dbe4ee; --bg:#f5f7fb; --green:#087443; --green-bg:#e8f7ef;
+    --amber:#8a5a00; --amber-bg:#fff5d8; --red:#a92828; --red-bg:#ffebeb;
+    --shadow:0 12px 28px rgba(23,50,77,.08);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.5}
+  .app{max-width:1200px;margin:auto;padding:38px 22px 70px}
+  .hero{background:linear-gradient(135deg,#17324d,#285a83);color:white;border-radius:22px;padding:34px 36px;box-shadow:var(--shadow);margin-bottom:24px}
+  .hero h1{margin:0 0 8px;font-size:clamp(28px,4vw,42px);letter-spacing:-.03em}
+  .hero p{margin:0;max-width:820px;color:#dcecff}
+  .version{display:inline-block;margin-top:16px;color:#e5f1ff;background:rgba(255,255,255,.13);padding:7px 11px;border-radius:999px;font-size:13px}
+  .input-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  .card,.draft{background:white;border:1px solid var(--line);border-radius:18px;padding:22px;box-shadow:var(--shadow)}
+  label{display:block;font-weight:750;margin-bottom:8px;color:var(--navy)}
+  .helper,.section-sub{color:var(--muted);font-size:13px}
+  .helper{margin:-3px 0 12px}
+  textarea{width:100%;min-height:270px;resize:vertical;border:1px solid #cbd5e1;border-radius:12px;padding:14px;font:inherit;color:var(--ink);outline:none}
+  textarea:focus{border-color:var(--blue);box-shadow:0 0 0 4px rgba(37,99,235,.12)}
+  .actions{display:flex;gap:12px;align-items:center;margin:20px 0 28px}
+  button{border:0;border-radius:10px;padding:12px 18px;font:inherit;font-weight:750;cursor:pointer}
+  .primary{background:var(--blue);color:white}.primary:hover{background:#1d4ed8}
+  .secondary{background:white;color:var(--navy);border:1px solid var(--line)}
+  #results{display:none}
+  .section{margin-top:22px}
+  .section-head{display:flex;justify-content:space-between;align-items:end;gap:12px;margin-bottom:12px}
+  h2{color:var(--navy);font-size:22px;margin:0}
+  .section-sub{margin:0}
+  .requirement-list{display:grid;gap:10px}
+  .requirement{background:white;border:1px solid var(--line);border-left:5px solid var(--blue);border-radius:12px;padding:13px 16px;box-shadow:0 5px 14px rgba(23,50,77,.04)}
+  .requirement strong{display:block;color:var(--navy)}
+  .requirement small{color:var(--muted)}
+  .warning{background:#fff9e8;border:1px solid #f4d77d;color:#765000;border-radius:12px;padding:13px 16px;margin:20px 0;font-size:14px}
+  .table-wrap{overflow-x:auto;background:white;border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow)}
+  table{width:100%;border-collapse:collapse;min-width:900px}
+  th,td{text-align:left;vertical-align:top;padding:14px 15px;border-bottom:1px solid var(--line)}
+  th{background:#f8fafc;color:var(--navy);font-size:13px;text-transform:uppercase;letter-spacing:.04em}
+  tr:last-child td{border-bottom:0} td{font-size:14px}
+  .badge{display:inline-block;border-radius:999px;padding:5px 9px;font-size:11px;font-weight:800;letter-spacing:.04em;white-space:nowrap}
+  .supported{color:var(--green);background:var(--green-bg)}
+  .partial{color:var(--amber);background:var(--amber-bg)}
+  .unsupported{color:var(--red);background:var(--red-bg)}
+  .review-list{margin:0;padding-left:20px}.review-list li{margin:8px 0}
+  .draft{white-space:pre-wrap}.draft .flag{border-left:4px solid #e6a400;background:#fff9e8;padding:10px 12px;margin-top:16px;font-size:14px}
+  @media(max-width:780px){.app{padding:22px 14px 50px}.hero{padding:26px 22px}.input-grid{grid-template-columns:1fr}textarea{min-height:220px}}
+</style>
+</head>
+<body>
+<main class="app">
+  <section class="hero">
+    <h1>AI Job Application Tailoring Assistant</h1>
+    <p>Version 2.2 keeps negative evidence specific to the skill or experience it describes, while preserving the existing cautious matching behaviour.</p>
+    <span class="version">Version 2.2 refinement · Rule-based demonstration prototype</span>
+  </section>
+
+  <section class="input-grid">
+    <div class="card">
+      <label for="jobAd">Job Advertisement</label>
+      <p class="helper">Paste the full job advertisement, including responsibilities and selection criteria.</p>
+      <textarea id="jobAd" placeholder="Example: We require strong SQL skills and experience using Python for data analysis."></textarea>
+    </div>
+    <div class="card">
+      <label for="candidateInfo">Candidate Information</label>
+      <p class="helper">Paste only factual information about your real experience. Instructions to exaggerate are ignored.</p>
+      <textarea id="candidateInfo" placeholder="Example: I have experience using Python for data analysis, but I have never used SQL."></textarea>
+    </div>
+  </section>
+
+  <div class="actions">
+    <button class="primary" id="analyseBtn">Analyse Application</button>
+    <button class="secondary" id="clearBtn">Clear</button>
+  </div>
+
+  <section id="results">
+    <div class="warning">
+      <strong>AI-assisted analysis.</strong> Check all matches and generated content against your actual experience before submission.
+      The applicant remains responsible for reviewing, editing and deciding whether the final application is ready to submit.
+    </div>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h2>Key Job Requirements</h2>
+          <p class="section-sub">Specific atomic requirements are retained; headings, duplicates and full source sentences are excluded.</p>
+        </div>
+      </div>
+      <div id="requirements" class="requirement-list"></div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h2>Requirement–Evidence Match</h2>
+          <p class="section-sub">Only factual candidate statements are used as evidence.</p>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Job Requirement</th>
+              <th>Candidate Evidence</th>
+              <th>Assessment</th>
+              <th>Explanation</th>
+            </tr>
+          </thead>
+          <tbody id="matchTable"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h2>Human Review Required</h2>
+          <p class="section-sub">Uncertainty is surfaced rather than resolved automatically.</p>
+        </div>
+      </div>
+      <div class="card"><ul id="reviewList" class="review-list"></ul></div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h2>Tailored Application Draft</h2>
+          <p class="section-sub">Only SUPPORTED candidate evidence becomes a confirmed statement.</p>
+        </div>
+      </div>
+      <div id="draft" class="draft"></div>
+    </section>
+  </section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+
+const headingPattern = /^(requirements?|qualifications?|responsibilities|about (the )?role|about you|what you('|’)ll do|key duties|essential criteria|desirable criteria|skills?)\s*:?\s*$/i;
+
+const injectionPatterns = [
+  /ignore (my|the|this|your)/i,
+  /make me meet/i,
+  /say i have/i,
+  /describe me as/i,
+  /pretend/i,
+  /invent/i,
+  /exaggerat/i,
+  /even though/i,
+  /so that i meet/i
+];
+
+const negativePatterns = [
+  /\bnever used\b/i,
+  /\bdo not have\b/i,
+  /\bdon't have\b/i,
+  /\bhave no experience\b/i,
+  /\bnot qualified\b/i,
+  /\bno experience\b/i,
+  /\bwithout experience\b/i,
+  /\bnot familiar\b/i
+];
+
+const toolPatterns = [
+  {label:"Power BI", re:/\bpower\s*bi\b/i, type:"tool"},
+  {label:"Tableau", re:/\btableau\b/i, type:"tool"},
+  {label:"SQL", re:/\bsql\b/i, type:"tool"},
+  {label:"Python", re:/\bpython\b/i, type:"tool"},
+  {label:"Excel", re:/\b(?:microsoft\s+)?excel\b/i, type:"tool"},
+  {label:"JavaScript", re:/\bjavascript\b/i, type:"tool"},
+  {label:"R", re:/(?:^|[\s,;(])r(?:[\s,;).]|$)/i, type:"tool"},
+  {label:"AWS", re:/\baws\b/i, type:"tool"},
+  {label:"Azure", re:/\bazure\b/i, type:"tool"}
+];
+
+const phrasePatterns = [
+  {label:"leading project schedules", re:/\bleading\s+(?:project\s+)?schedules?\b/i, type:"responsibility"},
+  {label:"managing project timelines", re:/\bmanaging\s+(?:project\s+)?timelines?\b/i, type:"responsibility"},
+  {label:"project management", re:/\bproject management\b/i, type:"responsibility"},
+  {label:"project coordination", re:/\bproject coordination\b/i, type:"responsibility"},
+  {label:"data visualisation", re:/\bdata visuali[sz]ation\b/i, type:"skill"},
+  {label:"dashboard development", re:/\bdashboard development\b/i, type:"skill"},
+  {label:"stakeholder communication", re:/\bstakeholder communication\b/i, type:"skill"},
+  {label:"team leadership", re:/\b(?:team leadership|leading a team|leadership experience)\b/i, type:"responsibility"},
+  {label:"customer service", re:/\bcustomer service\b/i, type:"skill"},
+  {label:"research", re:/\bresearch\b/i, type:"skill"},
+  {label:"problem solving", re:/\bproblem[-\s]?solving\b/i, type:"skill"},
+  {label:"communication", re:/\bcommunication skills?\b/i, type:"skill"},
+  {label:"bachelor degree", re:/\bbachelor(?:'s)?(?: degree)?\b/i, type:"qualification"},
+  {label:"master degree", re:/\bmaster(?:'s)?(?: degree)?\b/i, type:"qualification"},
+  {label:"driver licence", re:/\bdriver'?s? licence\b/i, type:"qualification"},
+  {label:"work rights", re:/\bright to work|work rights|working rights\b/i, type:"qualification"}
+];
+
+function escapeHtml(v) {
+  return v.replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+}
+
+function unique(arr) {
+  return [...new Set(arr)];
+}
+
+function sentences(text) {
+  return text.split(/(?<=[.!?])\s+|\n+/).map(x => x.trim()).filter(Boolean);
+}
+
+function cleanLine(line) {
+  return line.replace(/^[•*\-\u2022]\s*/, "").trim();
+}
+
+function isHeading(line) {
+  return headingPattern.test(cleanLine(line));
+}
+
+function isInstruction(text) {
+  return injectionPatterns.some(pattern => pattern.test(text));
+}
+
+/*
+  Version 2.2 targeted correction:
+  Split candidate sentences into factual clauses before matching.
+  This allows:
+  "Python evidence, but I have never used SQL"
+  to produce separate Python-positive and SQL-negative clauses.
+*/
+function factualClauses(text) {
+  const clauses = [];
+
+  sentences(text).forEach(sentence => {
+    const parts = sentence
+      .split(/\s+(?:but|however|although|though|while|whereas)\s+|,\s+(?:and|but|however)\s+/i)
+      .map(part => part.trim())
+      .filter(Boolean);
+
+    parts.forEach(part => {
+      if (!isInstruction(part)) {
+        clauses.push(part);
+      }
+    });
+  });
+
+  return clauses;
+}
+
+function qualifier(text) {
+  const lower = text.toLowerCase();
+  const levels = [];
+
+  if (/\badvanced\b/.test(lower)) levels.push("advanced");
+  if (/\bstrong\b/.test(lower)) levels.push("strong");
+  if (/\bexpert\b/.test(lower)) levels.push("expert");
+  if (/\bbasic\b/.test(lower)) levels.push("basic");
+
+  const years = lower.match(/\b(?:at least\s+)?(\d+)\+?\s+years?\b/);
+  const months = lower.match(/\b(\d+)\s+months?\b/);
+
+  return {
+    levels,
+    years: years ? Number(years[1]) : null,
+    months: months ? Number(months[1]) : null
+  };
+}
+
+function normal(text) {
+  return text.toLowerCase().replace(/[^\w\s]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function makeRequirement(label, options = {}) {
+  return {
+    label,
+    source: options.source || label,
+    tool: options.tool || null,
+    type: options.type || "explicit",
+    matchTerms: options.matchTerms || [label.toLowerCase()],
+    qualifier: options.qualifier || qualifier(label + " " + (options.source || ""))
+  };
+}
+
+function dedupeRequirements(items) {
+  const output = [];
+
+  items.forEach(item => {
+    const current = normal(item.label);
+    if (!current || current.length < 3) return;
+
+    const duplicate = output.some(existing => {
+      const previous = normal(existing.label);
+      return current === previous ||
+        (current.length > 18 && previous.length > 18 &&
+         (current.includes(previous) || previous.includes(current)));
+    });
+
+    if (!duplicate) output.push(item);
+  });
+
+  return output.slice(0, 18);
+}
+
+function localClause(line, regex) {
+  const match = line.match(regex);
+  if (!match) return line;
+
+  const before = line.slice(0, match.index);
+  const after = line.slice(match.index + match[0].length);
+
+  const beforeBoundary = Math.max(
+    before.lastIndexOf(","),
+    before.lastIndexOf(";"),
+    before.lastIndexOf(":"),
+    before.lastIndexOf(" and "),
+    before.lastIndexOf(" or ")
+  );
+
+  const afterAnd = after.search(/\s+(?:and|or)\s+/i);
+  const afterBoundary = afterAnd >= 0 ? afterAnd : after.length;
+
+  return (before.slice(beforeBoundary + 1) + " " + after.slice(0, afterBoundary)).trim();
+}
+
+function toolRequirement(line, tool) {
+  const clause = localClause(line, tool.re);
+  const q = qualifier(clause);
+  let label = tool.label;
+
+  if (q.levels.length) {
+    label = q.levels[0][0].toUpperCase() + q.levels[0].slice(1) + " " + label;
+  }
+
+  if (tool.label === "Python" && /\bfor\s+data\s+analysis\b/i.test(clause)) {
+    label += " for data analysis";
+  } else if (tool.label === "Power BI" && /\bdata\s+visuali[sz]ation\b/i.test(clause)) {
+    label += " for data visualisation";
+  } else if (tool.label === "Power BI" && /\bdashboard development\b/i.test(clause)) {
+    label += " for dashboard development";
+  } else if (/\bskills?\b/i.test(clause)) {
+    label += " skills";
+  }
+
+  return makeRequirement(label, {
+    source: line,
+    tool: tool.re,
+    type: tool.type,
+    qualifier: q,
+    matchTerms: [tool.label.toLowerCase(), ...label.toLowerCase().split(/\s+/)]
+  });
+}
+
+function extractRequirements(job) {
+  const lines = sentences(job).filter(line => !isHeading(line));
+  const items = [];
+
+  lines.forEach(line => {
+    let specificFound = false;
+
+    toolPatterns.forEach(tool => {
+      if (tool.re.test(line)) {
+        items.push(toolRequirement(line, tool));
+        specificFound = true;
+      }
+    });
+
+    phrasePatterns.forEach(phrase => {
+      if (phrase.re.test(line)) {
+        const q = qualifier(localClause(line, phrase.re));
+        let label = phrase.label;
+
+        if (q.levels.length) {
+          label = q.levels[0][0].toUpperCase() + q.levels[0].slice(1) + " " + label;
+        }
+
+        if (q.years) {
+          label = `At least ${q.years} years of experience in ${label}`;
+        }
+
+        items.push(makeRequirement(label, {
+          source: line,
+          type: phrase.type,
+          qualifier: q,
+          matchTerms: [phrase.label, ...phrase.label.split(" ")]
+        }));
+
+        specificFound = true;
+      }
+    });
+
+    const bullet = /^[•*\-\u2022]/.test(line);
+    const genericCue = /\b(required|essential|must|experience|qualification|proficien|ability to|responsibilit|responsible for)\b/i.test(line);
+
+    if (!specificFound && (bullet || genericCue)) {
+      const clean = cleanLine(line);
+
+      if (clean.length > 14 && clean.length < 150 && !isHeading(clean)) {
+        items.push(makeRequirement(clean, {
+          source: clean,
+          type: "explicit",
+          matchTerms: clean.toLowerCase().split(/\W+/).filter(word => word.length > 4)
+        }));
+      }
+    }
+  });
+
+  return dedupeRequirements(items);
+}
+
+function directLabelTerms(requirement) {
+  return [
+    requirement.label.toLowerCase(),
+    ...(requirement.matchTerms || []).map(term => term.toLowerCase())
+  ];
+}
+
+/*
+  Version 2.2 negative-evidence refinement:
+  Search only individual factual clauses and only return a negative clause
+  when that clause refers to the requirement being assessed.
+*/
+function findNegativeEvidence(requirement, candidate) {
+  const terms = directLabelTerms(requirement);
+
+  return factualClauses(candidate).find(clause => {
+    const lower = clause.toLowerCase();
+    const refersToRequirement = terms.some(term => {
+      if (term.length <= 2) {
+        return new RegExp("(^|\\W)" + term + "(\\W|$)", "i").test(clause);
+      }
+      return lower.includes(term);
+    });
+
+    return refersToRequirement && negativePatterns.some(pattern => pattern.test(clause));
+  });
+}
+
+function extractCandidateEvidence(requirement, candidate) {
+  const terms = directLabelTerms(requirement);
+
+  return unique(
+    factualClauses(candidate).filter(clause => {
+      const lower = clause.toLowerCase();
+
+      if (requirement.tool && !requirement.tool.test(clause)) {
+        return false;
+      }
+
+      return terms.some(term => {
+        if (term.length <= 2) {
+          return new RegExp("(^|\\W)" + term + "(\\W|$)", "i").test(clause);
+        }
+
+        return lower.includes(term);
+      });
+    })
+  ).slice(0, 2);
+}
+
+function assess(requirement, candidate) {
+  const negative = findNegativeEvidence(requirement, candidate);
+
+  if (negative) {
+    return {
+      assessment: "UNSUPPORTED",
+      evidence: negative,
+      explanation: "The candidate explicitly denies having this skill or experience. This overrides keyword matches and instructions to exaggerate."
+    };
+  }
+
+  const evidence = extractCandidateEvidence(requirement, candidate);
+
+  if (!evidence.length) {
+    return {
+      assessment: "UNSUPPORTED",
+      evidence: "No supporting evidence provided.",
+      explanation: "No sufficient direct evidence was found in the candidate information."
+    };
+  }
+
+  const combined = evidence.join(" ");
+  const requirementText = requirement.label.toLowerCase();
+  const evidenceText = combined.toLowerCase();
+  const requiredQualifier = requirement.qualifier || qualifier(requirement.label);
+  const evidenceQualifier = qualifier(combined);
+
+  if (requirement.tool && !requirement.tool.test(combined)) {
+    return {
+      assessment: "PARTIAL / UNCERTAIN",
+      evidence: combined,
+      explanation: "The evidence does not name the same technology as the job requirement. Related technologies are not treated as equivalent."
+    };
+  }
+
+  if (/\b(?:leading|lead|managing|managed|owned|directed)\b/i.test(requirementText) &&
+      /\b(?:assisted|helped|supported|participated|coordinated)\b/i.test(evidenceText) &&
+      !/\b(?:led|leading|managed|managing|owned|directed)\b/i.test(evidenceText)) {
+    return {
+      assessment: "PARTIAL / UNCERTAIN",
+      evidence: combined,
+      explanation: "The evidence describes a weaker or different responsibility level than the requirement."
+    };
+  }
+
+  if (requiredQualifier.levels.length &&
+      !requiredQualifier.levels.some(level => new RegExp("\\b" + level + "\\b", "i").test(evidenceText))) {
+    return {
+      assessment: "PARTIAL / UNCERTAIN",
+      evidence: combined,
+      explanation: "The relevant skill is mentioned, but the required level or qualifier is not clearly demonstrated."
+    };
+  }
+
+  if (requiredQualifier.years &&
+      (!evidenceQualifier.years || evidenceQualifier.years < requiredQualifier.years)) {
+    return {
+      assessment: "PARTIAL / UNCERTAIN",
+      evidence: combined,
+      explanation: `The requirement specifies at least ${requiredQualifier.years} years, but the candidate evidence does not clearly demonstrate that duration.`
+    };
+  }
+
+  if (/\b(?:basic|some|familiar|exposure|interested|learning)\b/i.test(evidenceText)) {
+    return {
+      assessment: "PARTIAL / UNCERTAIN",
+      evidence: combined,
+      explanation: "The evidence indicates limited, developing or ambiguous experience rather than a confirmed full match."
+    };
+  }
+
+  return {
+    assessment: "SUPPORTED",
+    evidence: combined,
+    explanation: "The candidate information directly demonstrates the stated requirement."
+  };
+}
+
+function makeDraft(matches) {
+  const supported = matches.filter(item => item.result.assessment === "SUPPORTED");
+  const uncertain = matches.filter(item => item.result.assessment === "PARTIAL / UNCERTAIN");
+
+  let draft = "Dear Hiring Manager,\\n\\n";
+  draft += "I am writing to apply for the advertised position. ";
+
+  if (supported.length) {
+    const evidenceStatements = supported.slice(0, 4).map(item => item.result.evidence);
+    draft += "My relevant background includes: " + evidenceStatements.join(" ") + " ";
+  } else {
+    draft += "I am interested in the opportunity and would welcome the chance to discuss my background. ";
+  }
+
+  draft += "I would welcome the opportunity to discuss how my demonstrated experience could contribute to your team.\\n\\n";
+  draft += "Thank you for considering my application.\\n\\nKind regards,\\n[Applicant name]";
+
+  if (uncertain.length) {
+    draft += '<div class="flag"><strong>Applicant review:</strong> The following areas were not written as confirmed claims because they require verification: ' +
+      uncertain.map(item => escapeHtml(item.requirement.label.toLowerCase())).join(", ") + ".</div>";
+  }
+
+  return draft;
+}
+
+function analyse() {
+  const job = $("jobAd").value.trim();
+  const candidate = $("candidateInfo").value.trim();
+
+  if (!job || !candidate) {
+    alert("Please provide both the Job Advertisement and Candidate Information.");
+    return;
+  }
+
+  const requirements = extractRequirements(job);
+
+  if (!requirements.length) {
+    requirements.push(makeRequirement("No clearly identifiable requirement extracted", {
+      matchTerms: ["unlikely-to-match-anything"]
+    }));
+  }
+
+  const matches = requirements.map(requirement => ({
+    requirement,
+    result: assess(requirement, candidate)
+  }));
+
+  $("requirements").innerHTML = matches.map(item => `
+    <div class="requirement">
+      <strong>${escapeHtml(item.requirement.label)}</strong>
+      <small>Atomic requirement extracted from the job advertisement</small>
+    </div>
+  `).join("");
+
+  $("matchTable").innerHTML = matches.map(item => {
+    const cls = item.result.assessment === "SUPPORTED"
+      ? "supported"
+      : item.result.assessment === "UNSUPPORTED"
+        ? "unsupported"
+        : "partial";
+
+    return `
+      <tr>
+        <td><strong>${escapeHtml(item.requirement.label)}</strong></td>
+        <td>${escapeHtml(item.result.evidence)}</td>
+        <td><span class="badge ${cls}">${item.result.assessment}</span></td>
+        <td>${escapeHtml(item.result.explanation)}</td>
+      </tr>
+    `;
+  }).join("");
+
+  const reviewItems = matches.filter(item => item.result.assessment !== "SUPPORTED");
+
+  $("reviewList").innerHTML = reviewItems.length
+    ? reviewItems.map(item => `
+        <li><strong>${escapeHtml(item.requirement.label)}:</strong>
+        ${escapeHtml(item.result.explanation)}</li>
+      `).join("")
+    : "<li>No partial matches were identified. The applicant must still verify every statement before submission.</li>";
+
+  $("draft").innerHTML = makeDraft(matches);
+  $("results").style.display = "block";
+  $("results").scrollIntoView({behavior:"smooth", block:"start"});
+}
+
+function clearAll() {
+  $("jobAd").value = "";
+  $("candidateInfo").value = "";
+  $("results").style.display = "none";
+  $("jobAd").focus();
+}
+
+$("analyseBtn").addEventListener("click", analyse);
+$("clearBtn").addEventListener("click", clearAll);
+</script>
+</body>
+</html>
